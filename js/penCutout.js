@@ -31,11 +31,6 @@
         $("#" + a.can.id).mousemove(function (e) {
             var p = a.can.pointList;
             if (a.can.paint) {//是不是按下了鼠标
-                if(!a.can.IsClose){
-                    if (p.length > 0) {
-                        a.equalStartPoint(p[p.length - 1].pointx, p[p.length - 1].pointy);
-                    }
-                }
                 a.roundIn(e.offsetX, e.offsetY);
             }
             //判断是否在点上
@@ -69,11 +64,10 @@
                     //闭合
                 }
             }
-            //验证是否填充背景：
-            if (a.can.IsClose) {
-                a.drawAllLine();
-            }
-
+            // //验证是否填充背景：
+            // if (a.can.IsClose) {
+            //     a.drawAllLine();
+            // }
         });
         $("#" + a.can.id).mouseleave(function (e) {
             a.can.paint = false;
@@ -221,7 +215,6 @@
                 }
                 this.drawArcSmall(x, y);
                 this.drawLine(p[this.can.pointList.length - 1].pointx, p[this.can.pointList.length - 1].pointy, x, y);
-
             }
         }
     };
@@ -281,7 +274,7 @@
            flag = true; 
         }
         return flag;
-    }
+    };
     //判断结束点是否与起始点重合；
     this.equalStartPoint = function (x, y) {
         var p = this.can.pointList;
@@ -290,11 +283,15 @@
             this.can.IsClose = true;
             // 增加选中状态
             this.AddNewNode(p[0].pointx,p[0].pointy);
+            this.roundIn(p[0].pointx,p[0].pointy);
         } else {
             //防止太相近的点添加到数组中
             var flag = false;
             for (var index = 0; index < p.length; index++) {
                 flag = this.judgeRange(x, y, p[index], this.can.roundr);
+                if(flag){
+                    return;
+                }
             }
             if(!flag) {
                 p.push(new this.point(x, y));
@@ -336,8 +333,8 @@
     //光标移到点上
     this.AddNewNode = function (newx, newy) {
         //如果闭合
+        var p = this.can.pointList;
         if (this.can.IsClose) {
-            var p = this.can.pointList;
             //判断光标是否在点上
             for (var i = 0; i < p.length - 1; i++) {
                 var result = false;
@@ -357,6 +354,18 @@
                 }
             }
         } else {
+            // 判断点是否在和已经存在的点重合
+            var flag = false;
+            var cashP;
+            for (var index = 0; index < p.length; index++) {
+                flag = this.judgeRange(newx, newy, p[index], this.can.roundr);
+                if(flag){
+                    cashP = p[index];
+                }
+            }
+            if(cashP) {
+                this.drawArcBig(cashP.pointx, cashP.pointy);
+            }
             return;
         }
     };

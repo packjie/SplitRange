@@ -4,7 +4,7 @@
  * @Author: LittleJY
  * @Date: 2019-05-31 14:21:24
  * @LastEditors: LittleJY
- * @LastEditTime: 2020-11-04 11:46:45
+ * @LastEditTime: 2020-11-04 17:44:34
 -->
 <!DOCTYPE html>
 <html lang="zh">
@@ -23,7 +23,8 @@
 			</div>
 			<div class="tools">
 					<input type="button" value="下一个区域" id="nextArea">
-			    <input type="button" value="坐标" id="btnPoints">
+					<input type="button" value="坐标" id="btnPoints">
+					<input type="button" value="撤销" id="clearLastPoint">
 			    <input type="button" value="重做" id="redo"/>
 			    <!-- <input type="button" value="裁剪" id="btnCut"/>
 			    <input type="button" value="下载" id="btnDown"/> -->
@@ -50,6 +51,9 @@
 						})
             $("#btnPoints").click(function () {
                 alert(JSON.stringify(_penCutout.can.pointList));
+						})
+						$("#clearLastPoint").click(function () {
+							_penCutout.clearLastPoint()
 						})
             $("#btnCut").click(function () {
                 _penCutout.createCutImg(function (imgSrcData, w, h) {

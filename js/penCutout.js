@@ -7,9 +7,9 @@
         width: 400,
         height: 400,
         imgSrc: "file/target.jpg",
-        // imgBackSrc: "file/tranback.png",
         penColor: "#0087C4",
         defaultPointList: new Array(),
+        currentArea: 0, //当前是第几个区域
         showTip: function (msg) {
             alert(msg);
         }
@@ -31,13 +31,14 @@
         $("#" + a.can.id).mousemove(function (e) {
             var p = a.can.pointList;
             if (a.can.paint) {//是不是按下了鼠标
-                if (p.length > 0) {
-                    a.equalStartPoint(p[p.length - 1].pointx, p[p.length - 1].pointy);
+                if(!a.can.IsClose){
+                    if (p.length > 0) {
+                        a.equalStartPoint(p[p.length - 1].pointx, p[p.length - 1].pointy);
+                    }
                 }
                 a.roundIn(e.offsetX, e.offsetY);
             }
-            //判断是否在直线上
-            //光标移动到线的附近如果是闭合的需要重新划线，并画上新添加的点
+            //判断是否在点上
             a.AddNewNode(e.offsetX, e.offsetY);
             //添加动态线：
             a.draAllMove(e.offsetX, e.offsetY);
@@ -45,13 +46,6 @@
         $("#" + a.can.id).mousedown(function (e) {
             var p = a.can.pointList;
             a.can.paint = true;
-            //点击判断是否需要在线上插入新的节点：
-            if (a.can.tempPointList.length > 0) {
-                a.can.pointList.splice(a.can.tempPointList[1].pointx, 0, new a.point(a.can.tempPointList[0].pointx, a.can.tempPointList[0].pointy));
-                //
-                //清空临时数组
-                a.can.tempPointList.length = 0;
-            }
         });
         $("#" + a.can.id).mouseup(function (e) {
             var p = a.can.pointList;
@@ -62,28 +56,21 @@
                 a.can.juPull = false;
                 a.can.curPointIndex = 0;
                 //验证抠图是否闭合：闭合，让结束点=开始点；添加标记
-                a.equalStartPoint(p[p.length - 1].pointx, p[p.length - 1].pointy);
+                if(!a.can.IsClose){
+                    a.equalStartPoint(p[p.length - 1].pointx, p[p.length - 1].pointy);
+                }
             } else {
                 //如果闭合：禁止添加新的点；
                 if (!a.can.IsClose) {//没有闭合
-                    p.push(new a.point(e.offsetX, e.offsetY));
                     //验证抠图是否闭合：闭合，让结束点=开始点；添加标记
-                    a.equalStartPoint(p[p.length - 1].pointx, p[p.length - 1].pointy);
-                    //判断是否闭合：
-                    //重新画；
-                    if (p.length > 1) {
-                        a.drawLine(p[p.length - 2].pointx, p[p.length - 2].pointy, p[p.length - 1].pointx, p[p.length - 1].pointy);
-                        a.drawArc(p[p.length - 1].pointx, p[p.length - 1].pointy);
-                    } else {
-                        a.drawArc(p[p.length - 1].pointx, p[p.length - 1].pointy);
-                    }
+                    // 并且判断是否需要添加点重新画点
+                    a.equalStartPoint(e.offsetX, e.offsetY);
                 } else {
                     //闭合
                 }
             }
             //验证是否填充背景：
             if (a.can.IsClose) {
-                // a.fillBackColor();
                 a.drawAllLine();
             }
 
@@ -97,9 +84,8 @@
             this.defaults = $.extend(this.defaults, options);
         }
         this.can.id = this.defaults.canvasId;
-        this.can.roundr = 7;
+        this.can.roundr = 8;
         this.can.roundrr = 3;
-        // this.can.imgBack.src = this.defaults.imgBackSrc;
         this.can.penColor = this.defaults.penColor;
         this.can.canvas = document.getElementById(this.can.id).getContext("2d");
         this.can.w = this.defaults.width;
@@ -157,10 +143,12 @@
         id: "",
         w: 0,
         h: 0,
+        //区域点集合
+        areaList: [],
+        //当前选择的区域
+        currentArea: 0, 
         //坐标点集合
         pointList: new Array(),
-        //临时存储坐标点
-        tempPointList: new Array(),
         //圆点的触发半径：
         roundr: 7,
         //圆点的显示半径：
@@ -197,9 +185,13 @@
     };
     //更新画线
     this.drawAllLine = function () {
+        //画线
+        var p = this.can.pointList;
+        var len = this.can.pointList.length;
+        if(this.can.IsClose){ //如果选定完一个区域后则首尾元素要连线
+            this.drawLine(p[0].pointx, p[0].pointy, p[len-1].pointx, p[len-1].pointy);
+        }
         for (var i = 0; i < this.can.pointList.length - 1; i++) {
-            //画线
-            var p = this.can.pointList;
             this.drawLine(p[i].pointx, p[i].pointy, p[i + 1].pointx, p[i + 1].pointy);
             //画圈
             this.drawArc(p[i].pointx, p[i].pointy);
@@ -235,10 +227,6 @@
     };
     //画线
     this.drawLine = function (startX, startY, endX, endY) {
-        //var grd = this.can.canvas.createLinearGradient(0, 0,2,0); //坐标，长宽
-        //grd.addColorStop(0, "black"); //起点颜色
-        //grd.addColorStop(1, "white");
-        //this.can.canvas.strokeStyle = grd;
         this.can.canvas.strokeStyle = this.can.penColor;
         this.can.canvas.lineWidth = 1;
         this.can.canvas.moveTo(startX, startY);
@@ -275,39 +263,42 @@
             this.can.canvas.drawImage(this.img.image, 0, 0, this.img.w, this.img.h);
         };
     };
-    // //填充背景色
-    // this.fillBackColor = function () {
-    //     for (var i = 0; i < this.img.w; i += 96) {
-    //         for (var j = 0; j <= this.img.h; j += 96) {
-    //             // this.can.canvas.drawImage(this.can.imgBack, i, j, 96, 96);
-    //         }
-    //     }
-    //     this.can.canvas.globalCompositeOperation = "destination-out";
-    //     this.can.canvas.beginPath();
-    //     for (var i = 0; i < this.can.pointList.length; i++) {
-    //         this.can.canvas.lineTo(this.can.pointList[i].pointx, this.can.pointList[i].pointy);
-    //     }
-    //     this.can.canvas.closePath();
-    //     this.can.canvas.fill();
-    //     this.can.canvas.globalCompositeOperation = "destination-over";
-    //     this.drawAllLine();
-    // };
     //去掉pointlist最后一个坐标点：
     this.clearLastPoint = function () {
-        this.can.pointList.pop();
-        //重画：
-        this.clearCan();
-        this.drawAllLine();
+        if(this.can.pointList&&this.can.pointList.length>1){
+            this.can.pointList.pop();
+            //重画：
+            this.clearCan();
+            this.drawAllLine();
+        }
     };
+    //判断鼠标点是否在一个点的区域范围内
+    this.judgeRange = function (x, y, point,round) {
+        var flag = false;
+        var absX = Math.abs((x - point.pointx));
+        var absY = Math.abs((y - point.pointy));
+        if(absX*absY <= round*round){
+           flag = true; 
+        }
+        return flag;
+    }
     //判断结束点是否与起始点重合；
     this.equalStartPoint = function (x, y) {
         var p = this.can.pointList;
-        if (p.length > 2 && Math.abs((x - p[0].pointx) * (x - p[0].pointx)) + Math.abs((y - p[0].pointy) * (y - p[0].pointy)) <= this.can.roundr * this.can.roundr) {
+        if (p.length > 2 && this.judgeRange(x, y, p[0], this.can.roundr)) {
             //如果闭合
             this.can.IsClose = true;
-            p[p.length - 1].pointx = p[0].pointx;
-            p[p.length - 1].pointy = p[0].pointy;
+            // 增加选中状态
+            this.AddNewNode(p[0].pointx,p[0].pointy);
         } else {
+            //防止太相近的点添加到数组中
+            var flag = false;
+            for (var index = 0; index < p.length; index++) {
+                flag = this.judgeRange(x, y, p[index], this.can.roundr);
+            }
+            if(!flag) {
+                p.push(new this.point(x, y));
+            }
             this.can.IsClose = false;
         }
     };
@@ -321,7 +312,6 @@
         var p = this.can.pointList;
         if (!this.can.juPull) {
             for (var i = 0; i < p.length; i++) {
-
                 if (Math.abs((x - p[i].pointx) * (x - p[i].pointx)) + Math.abs((y - p[i].pointy) * (y - p[i].pointy)) <= this.can.roundr * this.can.roundr) {
                     //说明点击圆点拖动了；
                     this.can.juPull = true;//拖动
@@ -331,10 +321,6 @@
                     p[i].pointy = y;
                     //重画：
                     this.clearCan();
-                    //showImg();
-                    // if (this.can.IsClose) {
-                    //     this.fillBackColor();
-                    // }
                     this.drawAllLine();
                     return;
                 }
@@ -344,108 +330,34 @@
             p[this.can.curPointIndex].pointy = y;
             //重画：
             this.clearCan();
-            // if (this.can.IsClose) {
-            //     this.fillBackColor();
-            // }
             this.drawAllLine();
         }
     };
-    //光标移到线上，临时数组添加新的节点：
+    //光标移到点上
     this.AddNewNode = function (newx, newy) {
         //如果闭合
-        var ii = 0;
         if (this.can.IsClose) {
-            //判断光标点是否在线上：
             var p = this.can.pointList;
             //判断光标是否在点上
             for (var i = 0; i < p.length - 1; i++) {
-                //计算a点和b点的斜率
-                // var k =(p[i + 1].pointy - p[i].pointy) / (p[i + 1].pointx - p[i].pointx);
                 var result = false;
                 var regionX = Math.abs(p[i].pointx-newx&&p[i]);
                 var regionY = Math.abs(p[i].pointy-newy&&p[i]);
-                if(regionX<5&&regionY<5){
+                if(regionX < this.can.roundr && regionY < this.can.roundr){
                     result = true;
                 }
-                // if (parseFloat(p[i + 1].pointx) - parseFloat(p[i].pointx) != 0) {
-                //     var k = parseFloat((p[i + 1].pointy - p[i].pointy)) / (p[i + 1].pointx - p[i].pointx);
-                //     var b = p[i].pointy - k * p[i].pointx;
-                //     var userK = parseFloat(k * newx + b);
-                //     if (((userK < newy + 4 && userK > newy - 4) || (parseInt(userK) == parseInt(newy))) && (newx - p[i + 1].pointx) * (newx - p[i].pointx) <= 2 && (newy - p[i + 1].pointy) * (newy - p[i].pointy) <= 2) {
-                //         var aa = Math.abs(p[i + 1].pointx - p[i].pointx - 3);
-                //         var ab = Math.abs(p[i + 1].pointx - newx);
-                //         var ac = Math.abs(newx - p[i].pointx);
-                //         var ba = Math.abs(p[i + 1].pointy - p[i].pointy - 3);
-                //         var bb = Math.abs(p[i + 1].pointy - newy);
-                //         var bc = Math.abs(newy - p[i].pointy);
-                //         if (aa <= 2 || aa >= 4) {
-                //             if (ab <= aa && ac <= aa && bb <= ba && bc <= ba) {
-                //                 result = true;
-                //             }
-                //         } else {
-                //             if (ab <= aa && ac <= aa) {
-                //                 result = true;
-                //             }
-                //         }
-                //     }
-                // }
-                // //考虑接近垂直的情况
-                // if (parseFloat(p[i + 1].pointx) - parseFloat(p[i].pointx) == 0 || (Math.abs(parseFloat(p[i + 1].pointx) / parseFloat(p[i].pointx)) >= 15)) {
-                //     if (p[i].pointx + 3 >= newx && p[i].pointx - 3 <= newx) {
-                //         var ba = Math.abs(p[i + 1].pointy - p[i].pointy - 3);
-                //         var bb = Math.abs(p[i + 1].pointy - newy);
-                //         var bc = Math.abs(newy - p[i].pointy);
-                //         if (bb <= ba && bc <= ba) {
-                //             result = true;
-                //         }
-                //     }
-                // }
                 if (result) {
                     //重画：
-                        this.clearCan();
-                        //showImg();
-                        // if (this.can.IsClose) {
-                        //     this.fillBackColor();
-                        // }
-                        this.drawAllLine();
-                        this.drawArcBig(newx,newy);
-                    // //
-                    // //parseInt(k * newx + b) == parseInt(newy)
-                    // //添加临时点：
-                    // this.can.tempPointList[0] = new this.point(newx, newy);//新的坐标点
-                    // this.can.tempPointList[1] = new this.point(i + 1, i + 1);//需要往pointlist中插入新点的索引；
-                    // i++;
-                    // //光标移动到线的附近如果是闭合的需要重新划线，并画上新添加的点；
-                    // if (this.can.tempPointList.length > 0) {
-                        
-                    //     return;
-                    // }
+                    this.clearCan();
+                    this.drawAllLine();
+                    this.drawArcBig(newx,newy);
                     return;
                 } else {
                     // $("#Text1").val("");
                 }
             }
-            if (ii == 0) {
-                
-                if (this.can.tempPointList.length > 0) {
-                    //清空临时数组；
-                    this.can.tempPointList.length = 0;
-                    //重画：
-                    this.clearCan();
-                    //showImg();
-                    // if (this.can.IsClose) {
-                    //     this.fillBackColor();
-                    // }
-                    this.drawAllLine();
-                    //this.drawArc(this.can.tempPointList[0].pointx, this.can.tempPointList[0].pointy);
-                }
-            }
         } else {
-            //防止计算误差引起的添加点，当闭合后，瞬间移动起始点，可能会插入一个点到临时数组，当再次执行时，
-            //就会在非闭合情况下插入该点，所以，时刻监视：
-            if (this.can.tempPointList.length > 0) {
-                this.can.tempPointList.length = 0;
-            }
+            return;
         }
     };
     this.notEmptyObj = function (obj) {
@@ -453,105 +365,5 @@
             return true;
         }
         return false;
-    };
-    this.createCutImg = function (fun) {
-        var tempPointArray;
-        var tempPointList;
-        if (this.notEmptyObj(this.can.pointList) && this.can.pointList.length > 1) {
-            tempPointList = JSON.parse(JSON.stringify(this.can.pointList));
-            tempPointArray = this.movePointArray(tempPointList);
-        } else {
-            this.defaults.showTip("请先进行抠图操作");
-            return;
-        }
-        var proxy = this;
-        var img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = this.defaults.imgSrc;
-        img.onload = function () {
-            var canvas = document.createElement("canvas");
-            canvas.width = tempPointArray[1].pointx - tempPointArray[0].pointx;
-            canvas.height = tempPointArray[1].pointy - tempPointArray[0].pointy;
-            var ctx = canvas.getContext('2d');
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            for (var i = 0; i < tempPointList.length; i++) {
-                ctx.lineTo(tempPointList[i].pointx, tempPointList[i].pointy);
-            }
-            ctx.lineTo(tempPointList[0].pointx, tempPointList[0].pointy);
-            ctx.clip();
-            ctx.drawImage(img, tempPointArray[0].pointx * -1, tempPointArray[0].pointy * -1, proxy.img.w, proxy.img.h);
-            fun(canvas.toDataURL("image/png"), canvas.width, canvas.height);
-        };
-    };
-    this.downLoad = function () {
-        var tempPointArray;
-        var tempPointList;
-        if (this.notEmptyObj(this.can.pointList) && this.can.pointList.length > 1) {
-            tempPointList = JSON.parse(JSON.stringify(this.can.pointList));
-            tempPointArray = this.movePointArray(tempPointList);
-        } else {
-            this.defaults.showTip("请先进行抠图操作");
-            return;
-        }
-        var proxy = this;
-        var img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = this.defaults.imgSrc;
-        img.onload = function () {
-            var canvas = document.createElement("canvas");
-            canvas.width = tempPointArray[1].pointx - tempPointArray[0].pointx;
-            canvas.height = tempPointArray[1].pointy - tempPointArray[0].pointy;
-            var ctx = canvas.getContext('2d');
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            for (var i = 0; i < tempPointList.length; i++) {
-                ctx.lineTo(tempPointList[i].pointx, tempPointList[i].pointy);
-            }
-            ctx.lineTo(tempPointList[0].pointx, tempPointList[0].pointy);
-            ctx.clip();
-            ctx.drawImage(img, tempPointArray[0].pointx * -1, tempPointArray[0].pointy * -1, proxy.img.w, proxy.img.h);
-            var fileName = "target.png";
-            if (window.navigator.msSaveOrOpenBlob) {
-                var imgData = canvas.msToBlob();
-                var blobObj = new Blob([imgData]);
-                window.navigator.msSaveOrOpenBlob(blobObj, fileName);
-            } else {
-                var imgData = canvas.toDataURL("image/png");
-                var a = document.createElement('a');
-                var event = new MouseEvent('click');
-                a.download = fileName;
-                a.href = imgData;
-                a.dispatchEvent(event);
-            }
-        };
-    }
-    this.movePointArray = function (pointArray) {
-        var smallX = pointArray[0].pointx;
-        var smallY = pointArray[0].pointy;
-        var bigX = smallX;
-        var bigY = smallY;
-        var tempArray = new Array();
-        for (var i = 1; i < pointArray.length; i++) {
-            if (pointArray[i].pointx < smallX) {
-                smallX = pointArray[i].pointx;
-            }
-            if (pointArray[i].pointx > bigX) {
-                bigX = pointArray[i].pointx;
-            }
-            if (pointArray[i].pointy < smallY) {
-                smallY = pointArray[i].pointy;
-            }
-            if (pointArray[i].pointy > bigY) {
-                bigY = pointArray[i].pointy;
-            }
-        }
-        for (var n = 0; n < pointArray.length; n++) {
-            pointArray[n].pointx -= smallX;
-            pointArray[n].pointy -= smallY;
-        }
-        tempArray[0] = new this.point(smallX, smallY);
-        tempArray[1] = new this.point(bigX, bigY);
-        return tempArray;
     };
 };

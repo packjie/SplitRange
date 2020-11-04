@@ -1,0 +1,18 @@
+.canvasDiv {
+    cursor: pointer;
+}
+
+.canvasDiv canvas {
+    cursor: pointer;
+}
+
+#imgCutShow {
+    display: none;
+    margin: 0px 410px;
+}
+
+.tools {
+    position: absolute;
+    clear: both;
+    margin-top: 550px;
+}

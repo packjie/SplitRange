@@ -176,6 +176,8 @@
             this.can.juPull= false;
             //IsClose闭合重新设为false;
             this.can.IsClose = false;
+            //处理数据
+            this.handleData();
         }else{
             this.defaults.showTip('请先绘制闭合的区域');
         }
@@ -204,6 +206,31 @@
                 this.can.IsClose = true;
             }
         }
+    };
+    this.handleData = function () {
+        var imgName = $('#imgName').val();
+        var sub_polys = [];
+        if(this.can.areaList && this.can.areaList.length){
+            for (var areaIndex = 0; areaIndex < this.can.areaList.length; areaIndex++) {
+                var pointLIst = this.can.areaList[areaIndex];
+                var points = [];
+                if(pointLIst && pointLIst.length){
+                    pointLIst.forEach(element => {
+                        points.push({
+                            X: element.pointx,
+                            Y: element.pointy
+                        });
+                    });
+                }
+                sub_polys.push({
+                    poly_id: imgName + areaIndex,
+                    points: points
+                });
+            }
+        }
+        var text = '"sub_polys"'+':' +JSON.stringify(sub_polys);
+        $('#textarea').val(text);
+        $("#textarea").css("height", $('#textarea')[0].scrollHeight);
     };
     //保存：返回所有点的数组：
     this.SaveCut = function () {
@@ -325,8 +352,8 @@
         var flag = false;
         var absX = Math.abs((x - point.pointx));
         var absY = Math.abs((y - point.pointy));
-        if(absX*absY <= round*round){
-           flag = true; 
+        if(absX <= round && absY<=round){
+            flag = true; 
         }
         return flag;
     };
@@ -337,6 +364,19 @@
             //如果闭合
             this.can.IsClose = true;
         } else {
+            // 处理边缘数据让靠近边缘的数据回归边缘
+            if(Math.abs(x-0) <= this.can.roundr){
+                x = 0;
+            }
+            if(Math.abs(x-960) <= this.can.roundr){
+                x = 960;
+            }
+            if(Math.abs(y-0) <= this.can.roundr){
+                y = 0;
+            }
+            if(Math.abs(y-540) <= this.can.roundr){
+                y = 540;
+            }
             //防止太相近的点添加到数组中
             var flag = false;
             for (var index = 0; index < p.length; index++) {
@@ -345,8 +385,26 @@
                     return;
                 }
             }
+            var cashP;
+            // 如果和其他区域内的点重合，就取其他区域内的点
+            if(this.can.areaList && this.can.areaList.length){
+                this.can.areaList.forEach(element => {
+                    if(element && element.length){
+                        element.forEach(item => {
+                            flag = this.judgeRange(x, y, item, this.can.roundr);
+                            if(flag){
+                                cashP = item;
+                            }
+                        });
+                    }
+                });
+            }
             if(!flag) {
-                p.push(new this.point(x, y));
+                if(cashP){
+                    p.push(cashP);
+                }else{
+                    p.push(new this.point(x, y));
+                }
             }
             this.can.IsClose = false;
         }
@@ -402,6 +460,18 @@
             // 判断点是否在和已经存在的点重合
             var flag = false;
             var cashP;
+            if(this.can.areaList && this.can.areaList.length){
+                this.can.areaList.forEach(element => {
+                    if(element && element.length){
+                        element.forEach(item => {
+                            flag = this.judgeRange(newx, newy, item, this.can.roundr);
+                            if(flag){
+                                cashP = item;
+                            }
+                        });
+                    }
+                });
+            }
             for (var index = 0; index < p.length; index++) {
                 flag = this.judgeRange(newx, newy, p[index], this.can.roundr);
                 if(flag){
@@ -409,6 +479,8 @@
                 }
             }
             if(cashP) {
+                this.clearCan();
+                this.drawAllLine();
                 this.drawArcBig(cashP.pointx, cashP.pointy);
             }
             return;

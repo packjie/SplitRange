@@ -391,8 +391,7 @@
                 this.can.areaList.forEach(element => {
                     if(element && element.length){
                         element.forEach(item => {
-                            flag = this.judgeRange(x, y, item, this.can.roundr);
-                            if(flag){
+                            if(this.judgeRange(x, y, item, this.can.roundr)){
                                 cashP = item;
                             }
                         });

@@ -6,7 +6,7 @@
         imgId: "imgCut",
         width: 400,
         height: 400,
-        imgSrc: "file/target.jpg",
+        imgSrc: "image/SHC1.png",
         penColor: "#0087C4",
         defaultPointList: new Array(),
         currentArea: 0, //当前是第几个区域

@@ -4,7 +4,7 @@
  * @Author: LittleJY
  * @Date: 2019-05-31 14:21:24
  * @LastEditors: LittleJY
- * @LastEditTime: 2020-11-04 17:44:34
+ * @LastEditTime: 2020-11-05 11:06:30
 -->
 <!DOCTYPE html>
 <html lang="zh">
@@ -22,12 +22,13 @@
 			<div class="canvasDiv" id="drawPanel">
 			</div>
 			<div class="tools">
-					<input type="button" value="下一个区域" id="nextArea">
-					<input type="button" value="坐标" id="btnPoints">
-					<input type="button" value="撤销" id="clearLastPoint">
-			    <input type="button" value="重做" id="redo"/>
-			    <!-- <input type="button" value="裁剪" id="btnCut"/>
-			    <input type="button" value="下载" id="btnDown"/> -->
+				<input type="button" value="上一个区域" id="backArea">
+				<input type="button" value="下一个区域" id="nextArea">
+				<input type="button" value="坐标" id="btnPoints">
+				<input type="button" value="撤销" id="clearLastPoint">
+				<input type="button" value="重做" id="redo"/>
+			  <!-- <input type="button" value="裁剪" id="btnCut"/>
+			  <input type="button" value="下载" id="btnDown"/> -->
 			</div>
 			<img id="imgCutShow">
 		</div>
@@ -46,6 +47,9 @@
                 height: 540
             });
 						//事件
+						$("#backArea").click(function () {
+							_penCutout.backArea()
+						})
 						$("#nextArea").click(function () {
 							_penCutout.nextArea()
 						})

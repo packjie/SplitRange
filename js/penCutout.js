@@ -64,10 +64,6 @@
                     //闭合
                 }
             }
-            // //验证是否填充背景：
-            // if (a.can.IsClose) {
-            //     a.drawAllLine();
-            // }
         });
         $("#" + a.can.id).mouseleave(function (e) {
             a.can.paint = false;
@@ -161,28 +157,83 @@
     //函数：重做，清空
     this.ReDo = function () {
         this.clearCan();
+        //清空历史区域
+        this.can.areaList.length = 0;
+        //充值区域
+        this.currentArea = 0;
         //清空listPoint();
         this.can.pointList.length = 0;
         //IsClose闭合重新设为false;
         this.can.IsClose = false;
     };
-    //函数：重做，清空
+    //函数：下一个区域
     this.nextArea = function () {
-        //清空listPoint();
-        // this.can.pointList.length = 0;
-        //IsClose闭合重新设为false;
-        this.can.IsClose = false;
+        if(this.can.pointList && this.can.pointList.length && this.can.IsClose){
+            this.can.areaList.push(JSON.parse(JSON.stringify(this.can.pointList)));
+            this.currentArea++;
+            this.can.pointList.length = 0;
+            this.drawAllLine();
+            this.can.juPull= false;
+            //IsClose闭合重新设为false;
+            this.can.IsClose = false;
+        }else{
+            this.defaults.showTip('请先绘制闭合的区域');
+        }
+    };
+    //函数：上一个区域
+    this.backArea = function () {
+        if(this.can.pointList && this.can.pointList.length){
+            this.can.pointList.length = 0;
+            //重画
+            this.clearCan();
+            this.drawAllLine();
+            if(this.can.areaList&&this.can.areaList.length){
+                //上一个区域为闭合状态;
+                this.can.IsClose = true;
+            }else{
+                this.draAllMove();
+            }
+        }else{
+            if(this.can.areaList&&this.can.areaList.length){
+                this.currentArea--;
+                this.can.pointList = this.can.areaList[this.currentArea];
+                //重画
+                this.clearCan();
+                this.drawAllLine();
+                //上一个区域为闭合状态;
+                this.can.IsClose = true;
+            }
+        }
     };
     //保存：返回所有点的数组：
     this.SaveCut = function () {
         return this.can.pointList();
     };
+    //更新区域画线
+    this.drawAreaLine = function () {
+        if(this.can.areaList&&this.can.areaList.length){
+            this.can.areaList.forEach(area => {
+                var len = area.length;
+                //一个区域后则首尾元素要连线
+                this.drawLine(area[0].pointx, area[0].pointy, area[len-1].pointx, area[len-1].pointy);
+                for (var i = 0; i < area.length - 1; i++) {
+                    this.drawLine(area[i].pointx, area[i].pointy, area[i + 1].pointx, area[i + 1].pointy);
+                    //画圈
+                    this.drawArc(area[i].pointx, area[i].pointy);
+                    if (i == area.length - 2) {
+                        this.drawArc(area[i + 1].pointx, area[i + 1].pointy);
+                    }
+                }
+            });
+        }
+    };
+    
     //更新画线
     this.drawAllLine = function () {
         //画线
         var p = this.can.pointList;
         var len = this.can.pointList.length;
-        if(this.can.IsClose){ //如果选定完一个区域后则首尾元素要连线
+        if(this.can.IsClose&&len){ //如果选定完一个区域后则首尾元素要连线
             this.drawLine(p[0].pointx, p[0].pointy, p[len-1].pointx, p[len-1].pointy);
         }
         for (var i = 0; i < this.can.pointList.length - 1; i++) {
@@ -193,6 +244,8 @@
                 this.drawArc(p[i + 1].pointx, p[i + 1].pointy);
             }
         }
+        //更新区域画线
+        this.drawAreaLine();
     };
     //动态线针：(光标的x,y)
     this.draAllMove = function (x, y) {
@@ -217,6 +270,8 @@
                 this.drawLine(p[this.can.pointList.length - 1].pointx, p[this.can.pointList.length - 1].pointy, x, y);
             }
         }
+        //更新区域画线
+        this.drawAreaLine();
     };
     //画线
     this.drawLine = function (startX, startY, endX, endY) {
@@ -281,9 +336,6 @@
         if (p.length > 2 && this.judgeRange(x, y, p[0], this.can.roundr)) {
             //如果闭合
             this.can.IsClose = true;
-            // 增加选中状态
-            this.AddNewNode(p[0].pointx,p[0].pointy);
-            this.roundIn(p[0].pointx,p[0].pointy);
         } else {
             //防止太相近的点添加到数组中
             var flag = false;
@@ -309,10 +361,9 @@
         var p = this.can.pointList;
         if (!this.can.juPull) {
             for (var i = 0; i < p.length; i++) {
-                if (Math.abs((x - p[i].pointx) * (x - p[i].pointx)) + Math.abs((y - p[i].pointy) * (y - p[i].pointy)) <= this.can.roundr * this.can.roundr) {
+                if (this.judgeRange(x, y, p[i], this.can.roundr)) {
                     //说明点击圆点拖动了；
                     this.can.juPull = true;//拖动
-                    //
                     this.can.curPointIndex = i;
                     p[i].pointx = x;
                     p[i].pointy = y;
@@ -336,21 +387,15 @@
         var p = this.can.pointList;
         if (this.can.IsClose) {
             //判断光标是否在点上
-            for (var i = 0; i < p.length - 1; i++) {
-                var result = false;
-                var regionX = Math.abs(p[i].pointx-newx&&p[i]);
-                var regionY = Math.abs(p[i].pointy-newy&&p[i]);
-                if(regionX < this.can.roundr && regionY < this.can.roundr){
-                    result = true;
-                }
-                if (result) {
+            for (var i = 0; i < p.length; i++) {
+                if (this.judgeRange(newx, newy, p[i], this.can.roundr)) {
                     //重画：
                     this.clearCan();
                     this.drawAllLine();
-                    this.drawArcBig(newx,newy);
+                    this.drawArcBig(p[i].pointx, p[i].pointy);
                     return;
                 } else {
-                    // $("#Text1").val("");
+                    // do somthing
                 }
             }
         } else {
